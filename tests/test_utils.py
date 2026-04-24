@@ -140,7 +140,7 @@ def test_unpack_fp4_tensor_positive_values(code, expected):
 @pytest.mark.parametrize("code,expected", _FP4_NEGATIVE)
 def test_unpack_fp4_tensor_negative_values(code, expected):
     """Low nibble negative FP4 codes decode correctly."""
-    packed = torch.tensor([code & 0x0F], dtype=torch.uint8)
+    packed = torch.tensor([code & 0xFF], dtype=torch.uint8)
     result = unpack_fp4_tensor(packed)
     assert result[0].item() == expected, f"code={code:#06b}: expected {expected}, got {result[0].item()}"
 
