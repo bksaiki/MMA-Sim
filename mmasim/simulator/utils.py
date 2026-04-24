@@ -24,30 +24,25 @@ def fma(a: torch.Tensor, b: torch.Tensor, c: torch.Tensor) -> torch.Tensor:
 def truncate_to_tf32(x: torch.Tensor) -> torch.Tensor:
     assert x.dtype == torch.float32
     x = x.view(torch.int32)  # uint32 operations are not supported by pytorch
-    x = x >> 13 << 13  # truncate to tf32
+    x = x & ~0x1FFF  # truncate to tf32 by masking lower 13 bits
     return x.view(torch.float32)
 
 
+# Global decoding table for FP4 values.  Index == 4-bit FP4 code (0–15).
+# Positive codes occupy indices 0–7; negative (sign bit set) occupy 8–15.
+_FP4_DECODE = (
+    0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0,
+    -0.0, -0.5, -1.0, -1.5, -2.0, -3.0, -4.0, -6.0,
+)
+_FP4_DECODE_TENSOR = torch.tensor(_FP4_DECODE, dtype=torch.float32)
+
+
 def unpack_fp4_tensor(packed: torch.Tensor) -> torch.Tensor:
-    n = packed.numel()
-    low = packed & 0x0F
-    high = packed >> 4
-    unpacked = torch.zeros(n * 2, dtype=torch.float32)
-    decoding = {
-        0b0000: 0.0,
-        0b0001: 0.5,
-        0b0010: 1.0,
-        0b0011: 1.5,
-        0b0100: 2.0,
-        0b0101: 3.0,
-        0b0110: 4.0,
-        0b0111: 6.0,
-    }
-    decoding |= {x + 0b1000: -y for x, y in decoding.items()}
-    for i in range(n):
-        unpacked[i * 2] = decoding[int(low[i].item())]
-        unpacked[i * 2 + 1] = decoding[int(high[i].item())]
-    return unpacked
+    low = (packed & 0x0F).long()
+    high = (packed >> 4).long()
+    # Interleave low/high nibbles: [low[0], high[0], low[1], high[1], ...]
+    indices = torch.stack([low, high], dim=1).flatten()
+    return _FP4_DECODE_TENSOR[indices]
 
 
 dtype_min_exponent = {
