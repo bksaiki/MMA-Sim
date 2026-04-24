@@ -1,11 +1,11 @@
 import torch
 
 from .arithmetic import (
-    pairwise_dot,
-    fused_dot_add,
-    nv_fused_dot_add,
-    nv_fused_dot_add_with_block_scale,
-    amd_fused_dot_rd_add,
+    pairwise_dot as _pairwise_dot,
+    fused_dot_add as _fused_dot_add,
+    nv_fused_dot_add as _nv_fused_dot_add,
+    nv_fused_dot_add_with_block_scale as _nv_fused_dot_add_with_block_scale,
+    amd_fused_dot_rd_add as _amd_fused_dot_rd_add,
 )
 
 
@@ -28,7 +28,7 @@ def batch_pairwise_dot(
     n = a.shape[0]
     results = torch.zeros(n, dtype=torch.float32)
     for i in range(n):
-        results[i] = pairwise_dot(a[i], b[i], flush_denormal)
+        results[i] = _pairwise_dot(a[i], b[i], flush_denormal)
     return results
 
 
@@ -59,7 +59,7 @@ def batch_fused_dot_add(
     results = []
     for i in range(n):
         results.append(
-            fused_dot_add(a[i], b[i], c[i], n_fractional_bits, scale_a[i], scale_b[i])
+            _fused_dot_add(a[i], b[i], c[i], n_fractional_bits, scale_a[i], scale_b[i])
         )
     return results
 
@@ -95,7 +95,7 @@ def batch_nv_fused_dot_add(
     for i in range(n):
         sa = scale_a[i] if scale_a is not None else None
         sb = scale_b[i] if scale_b is not None else None
-        results[i] = nv_fused_dot_add(
+        results[i] = _nv_fused_dot_add(
             a[i], b[i], c[i], n_fractional_bits, output_type, sa, sb
         )
     return results
@@ -127,7 +127,7 @@ def batch_nv_fused_dot_add_with_block_scale(
     n = a.shape[0]
     results = torch.zeros(n, dtype=torch.float32)
     for i in range(n):
-        results[i] = nv_fused_dot_add_with_block_scale(
+        results[i] = _nv_fused_dot_add_with_block_scale(
             a[i], b[i], c[i], scale_a[i], scale_b[i], n_fractional_bits
         )
     return results
@@ -157,5 +157,81 @@ def batch_amd_fused_dot_rd_add(
     n = a.shape[0]
     results = torch.zeros(n, dtype=torch.float64)
     for i in range(n):
-        results[i] = amd_fused_dot_rd_add(a[i], b[i], c[i], n_fractional_bits, is_fp8)
+        results[i] = _amd_fused_dot_rd_add(a[i], b[i], c[i], n_fractional_bits, is_fp8)
     return results
+
+
+# ---------------------------------------------------------------------------
+# Non-batched wrappers – compatibility shims so that batch_arithmetic.py can
+# be swapped in place of arithmetic.py.  Each wrapper calls the batched
+# version with a single-row batch and returns the scalar result.
+# ---------------------------------------------------------------------------
+
+def pairwise_dot(
+    a: torch.Tensor, b: torch.Tensor, flush_denormal: bool = False
+) -> float:
+    return batch_pairwise_dot(a.unsqueeze(0), b.unsqueeze(0), flush_denormal)[0].item()
+
+
+def fused_dot_add(
+    a: torch.Tensor,
+    b: torch.Tensor,
+    c: torch.Tensor,
+    n_fractional_bits: int,
+    scale_a: torch.Tensor,
+    scale_b: torch.Tensor,
+) -> tuple[float, int]:
+    return batch_fused_dot_add(
+        a.unsqueeze(0),
+        b.unsqueeze(0),
+        c.unsqueeze(0),
+        n_fractional_bits,
+        scale_a.unsqueeze(0),
+        scale_b.unsqueeze(0),
+    )[0]
+
+
+def nv_fused_dot_add(
+    a: torch.Tensor,
+    b: torch.Tensor,
+    c: torch.Tensor,
+    n_fractional_bits: int,
+    output_type: str,
+    scale_a: torch.Tensor | None = None,
+    scale_b: torch.Tensor | None = None,
+) -> torch.Tensor:
+    sa = scale_a.unsqueeze(0) if scale_a is not None else None
+    sb = scale_b.unsqueeze(0) if scale_b is not None else None
+    return batch_nv_fused_dot_add(
+        a.unsqueeze(0), b.unsqueeze(0), c.unsqueeze(0), n_fractional_bits, output_type, sa, sb
+    )[0]
+
+
+def nv_fused_dot_add_with_block_scale(
+    a: torch.Tensor,
+    b: torch.Tensor,
+    c: torch.Tensor,
+    scale_a: torch.Tensor,
+    scale_b: torch.Tensor,
+    n_fractional_bits: int,
+) -> torch.Tensor:
+    return batch_nv_fused_dot_add_with_block_scale(
+        a.unsqueeze(0),
+        b.unsqueeze(0),
+        c.unsqueeze(0),
+        scale_a.unsqueeze(0),
+        scale_b.unsqueeze(0),
+        n_fractional_bits,
+    )[0]
+
+
+def amd_fused_dot_rd_add(
+    a: torch.Tensor,
+    b: torch.Tensor,
+    c: torch.Tensor,
+    n_fractional_bits: int,
+    is_fp8: bool = False,
+) -> float:
+    return batch_amd_fused_dot_rd_add(
+        a.unsqueeze(0), b.unsqueeze(0), c.unsqueeze(0), n_fractional_bits, is_fp8
+    )[0].item()
