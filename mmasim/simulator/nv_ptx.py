@@ -2,11 +2,13 @@ import torch
 
 from ..isa import nv_ptx
 from .arithmetic import (
+    nv_fused_dot_add,
+    nv_fused_dot_add_with_block_scale,
+)
+from .utils import (
     fma,
     truncate_to_tf32,
     unpack_fp4_tensor,
-    nv_fused_dot_add,
-    nv_fused_dot_add_with_block_scale,
 )
 
 

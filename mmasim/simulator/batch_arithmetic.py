@@ -1,6 +1,6 @@
 import torch
 
-from .arithmetic import dtype_min_exponent
+from .utils import dtype_min_exponent
 
 
 # ---------------------------------------------------------------------------
