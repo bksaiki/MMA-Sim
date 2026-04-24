@@ -1,27 +1,12 @@
-import ctypes
-import math
-
 import torch
 
 from .arithmetic import (
-    fma,
-    truncate_to_tf32,
-    unpack_fp4_tensor,
-    flush_denormal,
-    extract_significand_exponent,
-    fused_sum,
     pairwise_dot,
     fused_dot_add,
     nv_fused_dot_add,
     nv_fused_dot_add_with_block_scale,
     amd_fused_dot_rd_add,
 )
-
-libm = ctypes.CDLL("libm.so.6")
-libm.fmaf.argtypes = [ctypes.c_float] * 3
-libm.fmaf.restype = ctypes.c_float
-libm.fma.argtypes = [ctypes.c_double] * 3
-libm.fma.restype = ctypes.c_double
 
 
 def batch_pairwise_dot(
