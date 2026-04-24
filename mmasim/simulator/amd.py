@@ -2,11 +2,13 @@ import torch
 
 from ..isa import amd
 from .arithmetic import (
+    pairwise_dot,
+    amd_fused_dot_rd_add,
+)
+from .utils import (
     fma,
     truncate_to_tf32,
     flush_denormal,
-    pairwise_dot,
-    amd_fused_dot_rd_add,
 )
 
 
