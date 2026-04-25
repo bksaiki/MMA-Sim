@@ -16,6 +16,11 @@ from mmasim.simulator.amd import mfma
 
 # ---------------------------------------------------------------------------
 # Representative (arch, qualifier) pairs – one or two per ISA generation
+#
+# Note: qualifier strings differ between ISA generations by design – they
+# mirror the naming conventions defined in mmasim/isa/amd.py (e.g. CDNA1
+# uses compact names like "f32_32x32x8f16" while CDNA3 uses separated
+# names like "f32_32x32x8_f16").
 # ---------------------------------------------------------------------------
 
 CDNA1_CASES = [
