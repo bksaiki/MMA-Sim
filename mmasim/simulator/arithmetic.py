@@ -37,7 +37,8 @@ def extract_significand_exponent(
 def pairwise_dot(
     a: torch.Tensor, b: torch.Tensor, flush_denormal: bool = False
 ) -> float:
-    assert a.dtype == b.dtype == torch.float32
+    a = a.float()
+    b = b.float()
     n = a.numel()
     if n == 1:
         sum = libm.fmaf(a.item(), b.item(), 0.0)
